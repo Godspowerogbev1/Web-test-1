@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stored user preferences and premium status",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "isPremium": { "type": "boolean" },
+        "dailyDownloads": { 
+          "type": "object",
+          "properties": {
+            "date": { "type": "string" },
+            "count": { "type": "number" }
+          }
+        }
+      },
+      "required": ["email", "isPremium"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    }
+  }
+}
