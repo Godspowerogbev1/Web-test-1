@@ -2,23 +2,58 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   LogIn, UserPlus, Github, Mail, ArrowRight, Lock, 
-  ShieldCheck, Zap, Sparkles, Globe
+  ShieldCheck, Zap, Sparkles, Globe, AlertCircle, Loader2
 } from "lucide-react";
-import { auth, googleProvider, signInWithPopup } from "../lib/firebase";
+import { 
+  auth, 
+  googleProvider, 
+  signInWithPopup, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "../lib/firebase";
 import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
+    setError(null);
     setLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
       navigate("/lab");
-    } catch (error) {
+    } catch (error: any) {
+      setError(error.message || "Login failed");
       console.error("Login failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+    
+    setError(null);
+    setLoading(true);
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+      navigate("/lab");
+    } catch (error: any) {
+      setError(error.message || "Authentication failed");
+      console.error("Auth failed", error);
     } finally {
       setLoading(false);
     }
@@ -84,21 +119,36 @@ export default function Auth() {
               <p className="text-neutral-500 italic">Enter the Digital Legend ecosystem.</p>
             </header>
 
-            <div className="space-y-6">
+            <form onSubmit={handleEmailAuth} className="space-y-6">
               <button 
+                type="button"
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-4 bg-white text-black py-5 font-black uppercase tracking-widest text-xs rounded-sm hover:bg-neutral-200 transition-all"
+                className="w-full flex items-center justify-center gap-4 bg-white text-black py-5 font-black uppercase tracking-widest text-xs rounded-sm hover:bg-neutral-200 transition-all disabled:opacity-50"
               >
-                <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
+                {loading ? <Loader2 className="animate-spin" size={16} /> : <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />}
                 {isLogin ? "Sign In with Google" : "Sign Up with Google"}
               </button>
 
-              <div className="flex items-center gap-6 py-4">
+              <div className="flex items-center gap-6 py-2">
                 <div className="flex-1 h-px bg-white/5" />
                 <span className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">Protocol Partition</span>
                 <div className="flex-1 h-px bg-white/5" />
               </div>
+
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-red-500/10 border border-red-500/20 p-4 rounded-sm flex items-center gap-3 text-red-500 text-xs italic font-bold"
+                  >
+                    <AlertCircle size={14} />
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -107,7 +157,10 @@ export default function Auth() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={16} />
                     <input 
                       type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="identity@domain.com"
+                      required
                       className="w-full bg-neutral-900 border border-white/5 rounded-sm py-4 pl-12 pr-4 text-sm font-light text-white focus:outline-none focus:border-blue-600 transition-all"
                     />
                   </div>
@@ -119,27 +172,39 @@ export default function Auth() {
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={16} />
                     <input 
                       type="password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
+                      required
                       className="w-full bg-neutral-900 border border-white/5 rounded-sm py-4 pl-12 pr-4 text-sm font-light text-white focus:outline-none focus:border-blue-600 transition-all"
                     />
                   </div>
                 </div>
               </div>
 
-              <button className="w-full bg-blue-600 text-white py-5 font-black italic uppercase tracking-tighter text-lg rounded-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/10 flex items-center justify-center gap-3">
-                {isLogin ? "Authenticate" : "Create Node"}
-                <ArrowRight size={20} />
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-5 font-black italic uppercase tracking-tighter text-lg rounded-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/10 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                  <>
+                    {isLogin ? "Authenticate" : "Create Node"}
+                    <ArrowRight size={20} />
+                  </>
+                )}
               </button>
 
               <div className="text-center">
                 <button 
+                  type="button"
                   onClick={() => setIsLogin(!isLogin)}
                   className="text-xs font-bold italic text-neutral-500 hover:text-blue-500 transition-colors"
                 >
                   {isLogin ? "Request brand new credentials?" : "Already have a digital identity?"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
 
           <div className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition-all">
