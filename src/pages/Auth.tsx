@@ -9,7 +9,9 @@ import {
   googleProvider, 
   signInWithPopup, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  sendEmailVerification
 } from "../lib/firebase";
 import { useNavigate } from "react-router-dom";
 
@@ -19,10 +21,12 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
     setError(null);
+    setMessage(null);
     setLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
@@ -43,17 +47,39 @@ export default function Auth() {
     }
     
     setError(null);
+    setMessage(null);
     setLoading(true);
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
+        navigate("/lab");
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Send verification email
+        await sendEmailVerification(userCredential.user);
+        setMessage("Verification email sent! Please check your inbox before logging in.");
+        setIsLogin(true); // Switch to login so they can verify
       }
-      navigate("/lab");
     } catch (error: any) {
       setError(error.message || "Authentication failed");
       console.error("Auth failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setMessage("Password reset email sent! Check your inbox.");
+    } catch (error: any) {
+      setError(error.message || "Failed to send reset email");
     } finally {
       setLoading(false);
     }
@@ -148,6 +174,17 @@ export default function Auth() {
                     {error}
                   </motion.div>
                 )}
+                {message && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-sm flex items-center gap-3 text-blue-500 text-xs italic font-bold"
+                  >
+                    <Sparkles size={14} />
+                    {message}
+                  </motion.div>
+                )}
               </AnimatePresence>
 
               <div className="space-y-4">
@@ -167,7 +204,18 @@ export default function Auth() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Access Protocol (Password)</label>
+                  <div className="flex justify-between items-center px-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Access Protocol (Password)</label>
+                    {isLogin && (
+                      <button 
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-[9px] font-black uppercase tracking-widest text-neutral-600 hover:text-blue-500 transition-colors"
+                      >
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={16} />
                     <input 

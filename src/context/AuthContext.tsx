@@ -42,16 +42,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (docSnap.exists()) {
             setUserData(docSnap.data() as UserData);
           } else {
-            // Initialize user data if it doesn't exist
-            const initialData: UserData = {
-              email: currentUser.email || '',
-              isPremium: false,
-              dailyDownloads: {
-                date: new Date().toLocaleDateString(),
-                count: 0
-              }
-            };
-            setDoc(userDocRef, initialData).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`));
+            // Initialize user data if it doesn't exist AND email is verified
+            if (currentUser.emailVerified || currentUser.providerData[0]?.providerId === 'google.com') {
+              const initialData: UserData = {
+                email: currentUser.email || '',
+                isPremium: false,
+                dailyDownloads: {
+                  date: new Date().toLocaleDateString(),
+                  count: 0
+                }
+              };
+              setDoc(userDocRef, initialData).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`));
+            }
           }
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
